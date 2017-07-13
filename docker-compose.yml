@@ -1,0 +1,96 @@
+version: '2'
+services:
+    nginx:
+        image: nginx
+        ports:
+            - "8080:80"
+        volumes:
+            - ./src:/src
+            - ./site.conf:/etc/nginx/conf.d/site.conf
+        links:
+            - php
+
+    php:
+        image: php:7-fpm
+        volumes:
+            - ./src:/src
+        links:
+            - database
+     
+    database:
+        image: mysql
+        environment:
+                - MYSQL_DATABASE=comparator
+                - MYSQL_ROOT_PASSWORD=comparator
+        volumes:
+            - ./database:/var/lib/mysql
+        ports:
+            - "3307:3306"
+    phpmyadmin:
+        image: phpmyadmin/phpmyadmin
+        environment:
+            PMA_ARBITRARY: 1
+            MYSQL_ROOT_PASSWORD: comparator
+        ports:
+            - "8181:80"
+        links:
+            # for mysql container
+            - "database:db"
+            
+    rabbit1:
+        image: "rabbitmq:3-management"
+        hostname: "rabbit1"
+        environment:
+            RABBITMQ_ERLANG_COOKIE: "SWQOKODSQALRPCLNMEQG"
+            RABBITMQ_DEFAULT_USER: "rabbitmq"
+            RABBITMQ_DEFAULT_PASS: "rabbitmq"
+            RABBITMQ_DEFAULT_VHOST: "/"
+        ports:
+            - "15672:15672"
+            - "5672:5672"
+            
+    elasticsearch1:
+        image: docker.elastic.co/elasticsearch/elasticsearch:5.5.0
+        container_name: elasticsearch1
+        environment:
+            - cluster.name=docker-cluster
+            - bootstrap.memory_lock=true
+            - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+        ulimits:
+            memlock:
+                soft: -1
+                hard: -1
+        mem_limit: 1g
+        volumes:
+            - esdata1:/usr/share/elasticsearch/data
+        ports:
+            - 9200:9200
+        networks:
+            - esnet
+    elasticsearch2:
+        image: docker.elastic.co/elasticsearch/elasticsearch:5.5.0
+        environment:
+            - cluster.name=docker-cluster
+            - bootstrap.memory_lock=true
+            - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+            - "discovery.zen.ping.unicast.hosts=elasticsearch1"
+        ulimits:
+            memlock:
+                soft: -1
+                hard: -1
+        mem_limit: 1g
+        volumes:
+            - esdata2:/usr/share/elasticsearch/data
+        networks:
+            - esnet
+            
+volumes:
+    db:
+        driver: local
+    esdata1:
+        driver: local
+    esdata2:
+        driver: local
+        
+networks:
+    esnet:
