@@ -1,7 +1,7 @@
 version: '2'
 services:
     nginx:
-        image: nginx
+        image: nginx:1.13.3
         ports:
             - "8080:80"
         volumes:
@@ -11,14 +11,22 @@ services:
             - php
 
     php:
-        image: php:7-fpm
+        build: ./docker/comparator-php
+        image: comparator-php
         volumes:
             - ./src:/src
         links:
             - database
      
+    composer:
+        image: composer/composer:php7
+        command: install
+        volumes_from: 
+            - php
+        working_dir: /src
+    
     database:
-        image: mysql
+        image: mysql:8.0.1
         environment:
                 - MYSQL_DATABASE=comparator
                 - MYSQL_ROOT_PASSWORD=comparator
@@ -27,7 +35,7 @@ services:
         ports:
             - "3307:3306"
     phpmyadmin:
-        image: phpmyadmin/phpmyadmin
+        image: phpmyadmin/phpmyadmin:4.7
         environment:
             PMA_ARBITRARY: 1
             MYSQL_ROOT_PASSWORD: comparator
